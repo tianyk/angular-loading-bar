@@ -31,16 +31,19 @@ angular.module('cfp.loadingBarInterceptor', ['cfp.loadingBar'])
 
       /**
        * The total number of requests made
+       * 请求计数
        */
       var reqsTotal = 0;
 
       /**
        * The number of requests completed (either successfully or not)
+       * 响应计数
        */
       var reqsCompleted = 0;
 
       /**
        * The amount of time spent fetching before showing the loading bar
+       * 多少时间以后开始显示进度条
        */
       var latencyThreshold = cfpLoadingBar.latencyThreshold;
 
@@ -53,6 +56,7 @@ angular.module('cfp.loadingBarInterceptor', ['cfp.loadingBar'])
       /**
        * calls cfpLoadingBar.complete() which removes the
        * loading bar from the DOM.
+       * 结束进度条
        */
       function setComplete() {
         $timeout.cancel(startTimeout);
@@ -65,6 +69,7 @@ angular.module('cfp.loadingBarInterceptor', ['cfp.loadingBar'])
        * Determine if the response has already been cached
        * @param  {Object}  config the config option from the request
        * @return {Boolean} retrns true if cached, otherwise false
+       * 检查是否已经cached了
        */
       function isCached(config) {
         var cache;
@@ -94,14 +99,19 @@ angular.module('cfp.loadingBarInterceptor', ['cfp.loadingBar'])
         'request': function(config) {
           // Check to make sure this request hasn't already been cached and that
           // the requester didn't explicitly ask us to ignore this request:
+          // 通过配置ignoreLoadingBar可以禁用loading
           if (!config.ignoreLoadingBar && !isCached(config)) {
+            // 通知：开始了一个请求
             $rootScope.$broadcast('cfpLoadingBar:loading', {url: config.url});
+            // 如果请求数量是0直接开始
             if (reqsTotal === 0) {
               startTimeout = $timeout(function() {
                 cfpLoadingBar.start();
               }, latencyThreshold);
             }
+            // 请求数量计数
             reqsTotal++;
+            // 多个请求时，响应数量/请求数量为此刻比例
             cfpLoadingBar.set(reqsCompleted / reqsTotal);
           }
           return config;
@@ -114,17 +124,22 @@ angular.module('cfp.loadingBarInterceptor', ['cfp.loadingBar'])
           }
 
           if (!response.config.ignoreLoadingBar && !isCached(response.config)) {
+            // 响应计数+1
             reqsCompleted++;
+            // 通知，完成了一个请求
             $rootScope.$broadcast('cfpLoadingBar:loaded', {url: response.config.url, result: response});
+            // 如果响应计数 >= 请求计数结束
             if (reqsCompleted >= reqsTotal) {
               setComplete();
             } else {
+              // 修改比例为 响应计数/请求计数
               cfpLoadingBar.set(reqsCompleted / reqsTotal);
             }
           }
           return response;
         },
 
+        // 错误的响应同正确的响应
         'responseError': function(rejection) {
           if (!rejection || !rejection.config) {
             $log.error('Broken interceptor detected: Config object not supplied in rejection:\n https://github.com/chieffancypants/angular-loading-bar/pull/50');
