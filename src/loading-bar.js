@@ -13,6 +13,7 @@
 
 'use strict';
 
+// 对外可以使用angular-loading-bar或者chieffancypants.loadingBar模块。起别名
 // Alias the loading bar for various backwards compatibilities since the project has matured:
 angular.module('angular-loading-bar', ['cfp.loadingBarInterceptor']);
 angular.module('chieffancypants.loadingBar', ['cfp.loadingBarInterceptor']);
@@ -165,28 +166,29 @@ angular.module('cfp.loadingBar', [])
     this.latencyThreshold = 100;
     this.startSize = 0.02;
     this.parentSelector = 'body';
-    this.spinnerTemplate = '<div id="loading-bar-spinner"><div class="spinner-icon"></div></div>';
-    this.loadingBarTemplate = '<div id="loading-bar"><div class="bar"><div class="peg"></div></div></div>';
+    this.spinnerTemplate = '<div id="loading-bar-spinner"><div class="spinner-icon"></div></div>'; // 小圆圈
+    this.loadingBarTemplate = '<div id="loading-bar"><div class="bar"><div class="peg"></div></div></div>'; // 进度条
 
     this.$get = ['$injector', '$document', '$timeout', '$rootScope', function ($injector, $document, $timeout, $rootScope) {
       var $animate;
-      var $parentSelector = this.parentSelector,
-        loadingBarContainer = angular.element(this.loadingBarTemplate),
-        loadingBar = loadingBarContainer.find('div').eq(0),
-        spinner = angular.element(this.spinnerTemplate);
+      var $parentSelector = this.parentSelector, // 父节点
+        loadingBarContainer = angular.element(this.loadingBarTemplate), // 进度条
+        loadingBar = loadingBarContainer.find('div').eq(0), // 进度条容器
+        spinner = angular.element(this.spinnerTemplate); // 小圆圈
 
-      var incTimeout,
-        completeTimeout,
-        started = false,
-        status = 0;
+      var incTimeout, // 渐进
+        completeTimeout, // 完成
+        started = false, // 是否已经开始
+        status = 0; // 就是一个进度值
 
-      var includeSpinner = this.includeSpinner;
-      var includeBar = this.includeBar;
-      var startSize = this.startSize;
+      var includeSpinner = this.includeSpinner; // 是否包含小圆圈
+      var includeBar = this.includeBar; // 是否包含进度条
+      var startSize = this.startSize; // 进度
 
       /**
        * Inserts the loading bar element into the dom, and sets it to 2%
        */
+      // 开始加载，做好初始化工作
       function _start() {
         if (!$animate) {
           $animate = $injector.get('$animate');
@@ -200,17 +202,21 @@ angular.module('cfp.loadingBar', [])
           return;
         }
 
+        // 广播开始加载事件
         $rootScope.$broadcast('cfpLoadingBar:started');
         started = true;
 
+        // 在body中放入进度条
         if (includeBar) {
           $animate.enter(loadingBarContainer, $parent, angular.element($parent[0].lastChild));
         }
 
+        // 在body中放入小圆圈
         if (includeSpinner) {
           $animate.enter(spinner, $parent, angular.element($parent[0].lastChild));
         }
 
+        // 开始，设置以一个开始进度0.02
         _set(startSize);
       }
 
@@ -219,6 +225,7 @@ angular.module('cfp.loadingBar', [])
        *
        * @param n any value between 0 and 1
        */
+      // 设置进度
       function _set(n) {
         if (!started) {
           return;
@@ -241,6 +248,7 @@ angular.module('cfp.loadingBar', [])
        * but slows down as it progresses
        */
       function _inc() {
+        // status >= 1 不再运行
         if (_status() >= 1) {
           return;
         }
@@ -249,6 +257,7 @@ angular.module('cfp.loadingBar', [])
 
         // TODO: do this mathmatically instead of through conditions
 
+        // 估算出来要前进的进度
         var stat = _status();
         if (stat >= 0 && stat < 0.25) {
           // Start out between 3 - 6% increments
@@ -267,6 +276,7 @@ angular.module('cfp.loadingBar', [])
           rnd = 0;
         }
 
+        // 重置status
         var pct = _status() + rnd;
         _set(pct);
       }
@@ -275,21 +285,25 @@ angular.module('cfp.loadingBar', [])
         return status;
       }
 
+      // 重置状态
       function _completeAnimation() {
         status = 0;
         started = false;
       }
+
 
       function _complete() {
         if (!$animate) {
           $animate = $injector.get('$animate');
         }
 
+        // 通知进度完成
         $rootScope.$broadcast('cfpLoadingBar:completed');
         _set(1);
 
         $timeout.cancel(completeTimeout);
 
+        // 卸载进度条、小圆圈
         // Attempt to aggregate any start/complete calls within 500ms:
         completeTimeout = $timeout(function() {
           var promise = $animate.leave(loadingBarContainer, _completeAnimation);
